@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FCC D3 HEATMAP</title>
+</head>
+<body style="width: 100vw; height: 100vh; background-color:#1F1F1F;display: flex; justify-content: center;align-items: center;">
+<script type="module">
+
+  import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+
+  const getDataAndDrawChart = async () => {
+    const request = await fetch('https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/cyclist-data.json')
+    const data =  await request.json()
+    await drawChart(data)
+  }
+  getDataAndDrawChart()
+  /*
+  {
+      "Time": "36:50",
+      "Place": 1,
+      "Seconds": 2210,
+      "Name": "Marco Pantani",
+      "Year": 1995,
+      "Nationality": "ITA",
+      "Doping": "Alleged drug use during 1995 due to high hematocrit levels",
+      "URL": "https://en.wikipedia.org/wiki/Marco_Pantani#Alleged_drug_use"
+    }
+   */
+  const drawChart = (data) => {
+    if (!data) setTimeout(() => drawChart(dates, gdp), 250)
+    const times = data.map((d) => d3.timeParse("%M:%S")(d.Time));
+    const years = data.map((d) => d.Year);
+    console.log(times, years)
+    const height = 800;
+    const width = 1200;
+    const xScale = d3.scaleTime().domain([d3.min(years) - 1, d3.max(years) + 1]).range([0, width * .8])
+    const yScale = d3.scaleTime().domain(d3.extent(times)).range([height * .1, height * .9])
+
+    d3.select("body")
+            .append("svg")
+            .attr("id", "svg")
+            .attr("width", width)
+            .attr("height", height)
+            .style("background-color", "#0F0F0F")
+            .style("color", "#DFDFDF");
+
+    d3.select("svg")
+            .append("text")
+            .attr("x", width / 2)
+            .attr("y", height * .075)
+            .attr("text-anchor", "middle")
+            .attr("id", "title")
+            .attr("fill", "white")
+            .style("font-family", "sans-serif")
+            .text("Doping in Professional Bicycle Racing");
+
+    d3.select("svg")
+            .append("g")
+            .attr("id", "legend")
+            .attr("transform", `translate(${width * .9}, ${height * .5})`)
+            .selectAll("rect")
+            .data(["#55FF33", "#FF5533"])
+            .enter()
+            .append("rect")
+            .attr("x", 0)
+            .attr("y", (d,i) => i * height * .03)
+            .attr("width", height*.02)
+            .attr("height", height*.02)
+            .style("fill", (d) => d)
+            .select("text")
+            .data(["No doping allegations", "Riders with doping allegations"])
+            .enter()
+            .append("text")
+            .attr("x", -10)
+            .attr("y", (d,i) => i * height * .03 + height * .015)
+            .attr("text-anchor", "end")
+            .attr("fill", "white")
+            .style("font-family", "sans-serif")
+            .text((d) => d)
+
+
+    d3.select("svg")
+            .append("g")
+            .attr("id", "x-axis")
+            .attr("transform", `translate(${width * .1}, ${height * .9})`)
+            .call(d3.axisBottom(xScale).tickFormat(d3.format("d")))
+
+    d3.select("svg")
+            .append("g")
+            .attr("transform", `translate(${width * .1}, 0)`)
+            .attr("id", "y-axis")
+            .call(d3.axisLeft(yScale).tickFormat(d3.timeFormat("%M:%S")))
+
+    d3.select("svg")
+            .selectAll("circle")
+            .data(data)
+            .enter()
+            .append("circle")
+            .attr("class", "dot")
+            .style("fill", d => d.Doping ? "#FF5533" : "#55ff33")
+            .attr("stroke", " #FFF")
+            .attr("transform", `translate(${width * .1}, 0)`)
+            .attr("cx", (d) => xScale(d.Year))
+            .attr("cy", (d) => yScale(d3.timeParse("%M:%S")(d.Time)))
+            .attr("r", height * .01)
+            .attr("data-xvalue", (d) => d.Year)
+            .attr("data-yvalue", (d) => d3.timeParse("%M:%S")(d.Time))
+            .on("mouseover", (e, d) => {
+              d3.select(e.target).style("fill", d => d.Doping ? "#FF5500" : "#55FF00")
+              d3.select("#tooltip")
+                      .attr("data-year", d.Year)
+                      .style("left", `${e.clientX}px`)
+                      .style("top", `${e.clientY - 20}px`)
+                      .style("opacity", 0.9)
+                      .style("padding", "0.5rem")
+                      .style("border-radius", "0.5rem")
+                      .style("font-family", "sans-serif")
+                      .style("font-size", "0.75rem")
+                      .style("color", "#1F1F1F")
+                      .html(
+                              `${d.Name} : ${d.Nationality}<br>Year : ${d.Year}, Time : ${d.Time}<br>
+            ${d.Doping ? "<br>" + d.Doping : ""}`
+                      );
+              console.log(yScale(d3.timeParse("%M:%S")(d.Time)), xScale(d.Year))
+            })
+            .on("mouseout", (e,d) => {
+              d3.select(e.target).style("fill", d => d.Doping ? "#FF5533" : "#55FF33")
+              d3.select("#tooltip").style("opacity", 0);
+            });
+    d3.select("body")
+            .append("div")
+            .attr("id", "tooltip")
+            .attr("opacity", "0")
+            .style("position", "absolute")
+            .style("background-color", "#DFDFDF")
+            .style("font-size", "0.75rem")
+            .style("left", "0")
+            .style("top", "0")
+            .style("transform", "translate(1rem, -1rem)")
+            .style("transition", "opacity 0.2s ease-in-out")
+            .style("z-index", "1000")
+            .style("box-shadow", "0 0 0.5rem rgba(0, 0, 0, 0.5)")
+  }
+  drawChart(data)
+</script>
+<script defer src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+</body>
+</html>
